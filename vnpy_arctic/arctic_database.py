@@ -1,12 +1,10 @@
 from datetime import datetime
-from typing import List
 from pandas import DataFrame, Timestamp
+from typing import List
 
 import arcticdb as adb
 from arcticdb.arctic import Arctic
 from arcticdb.version_store.library import Library, SymbolDescription
-
-
 
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData, TickData
@@ -157,7 +155,6 @@ class ArcticDatabase(BaseDatabase):
         start: str = info.date_range[0].strftime('%Y-%m-%d %H:%M:%S ') + tick.datetime.tzinfo.key
         end: str = info.date_range[1].strftime('%Y-%m-%d %H:%M:%S ') + tick.datetime.tzinfo.key
         
-
         metadata = {
                     "symbol": symbol,
                     "exchange": tick.exchange.value,
@@ -165,7 +162,6 @@ class ArcticDatabase(BaseDatabase):
                     "end": end,
                     "count": count
                 }
-
 
         self.tick_library.write_metadata(
             symbol=table_name,
@@ -232,7 +228,6 @@ class ArcticDatabase(BaseDatabase):
 
         if df.empty:
             return []
-
 
         df.sort_index(inplace=True)
         df = df.tz_localize(DB_TZ.key)
