@@ -63,8 +63,8 @@ class ArcticDatabase(BaseDatabase):
 
         # 将数据更新到数据库中
         self.bar_library.update(
-            table_name,
-            df, 
+            symbol=table_name,
+            data=df, 
             upsert=True,
             prune_previous_versions=True
         )
@@ -166,7 +166,7 @@ class ArcticDatabase(BaseDatabase):
                     "count": count
                 }
 
-
+        
         self.tick_library.write_metadata(
             symbol=table_name,
             metadata=metadata
