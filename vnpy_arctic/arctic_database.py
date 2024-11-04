@@ -23,10 +23,17 @@ class ArcticDatabase(BaseDatabase):
 
     def __init__(self) -> None:
         """"""
+        self.database_path: str = SETTINGS["database.path"]  # .vntrader 或 D:\SeaTurtle\.vntrader\ 自定义路径
         self.database_name: str = SETTINGS["database.name"]  # arcticdb
+        self.map_size: str = SETTINGS["database.map_size"]  # 5GB
+
+        if not self.database_path:
+            self.database_path = ".vntrader"
+        if not self.map_size:
+            self.map_size = "5GB"
 
         # 初始化连接
-        self.ac: Arctic = adb.Arctic("lmdb://.vntrader")
+        self.ac: Arctic = adb.Arctic(f"lmdb://{self.database_path}?map_size={self.map_size}")
 
         # 获取数据库(本地路径为.vntrader/arcticdb/bar_data/）
         self.bar_library: Library = self.ac.get_library(f"{self.database_name}.bar_data", create_if_missing=True)
@@ -61,8 +68,8 @@ class ArcticDatabase(BaseDatabase):
 
         # 将数据更新到数据库中
         self.bar_library.update(
-            table_name,
-            df, 
+            symbol=table_name,
+            data=df, 
             upsert=True,
             prune_previous_versions=True
         )
