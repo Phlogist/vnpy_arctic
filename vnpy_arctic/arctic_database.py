@@ -329,13 +329,15 @@ class ArcticDatabase(BaseDatabase):
         table_names: list = self.bar_library.list_symbols()
         for table_name in table_names:
             metadata: dict = self.bar_library.read_metadata(table_name).metadata
+            start: datetime = datetime.strptime(metadata["start"].rsplit(' ',1)[0], '%Y-%m-%d %H:%M:%S')
+            end: datetime = datetime.strptime(metadata["end"].rsplit(' ',1)[0], '%Y-%m-%d %H:%M:%S')
 
             overview: BarOverview = BarOverview(
                 symbol=metadata["symbol"],
                 exchange=Exchange(metadata["exchange"]),
                 interval=Interval(metadata["interval"]),
-                start=metadata["start"],
-                end=metadata["end"],
+                start=start,
+                end=end,
                 count=metadata["count"]
             )
 
@@ -350,12 +352,14 @@ class ArcticDatabase(BaseDatabase):
         table_names = self.tick_library.list_symbols()
         for table_name in table_names:
             metadata = self.tick_library.read_metadata(table_name).metadata
+            start: datetime = datetime.strptime(metadata["start"].rsplit(' ',1)[0], '%Y-%m-%d %H:%M:%S')
+            end: datetime = datetime.strptime(metadata["end"].rsplit(' ',1)[0], '%Y-%m-%d %H:%M:%S')
 
             overview = TickOverview(
                 symbol=metadata["symbol"],
                 exchange=Exchange(metadata["exchange"]),
-                start=metadata["start"],
-                end=metadata["end"],
+                start=start,
+                end=end,
                 count=metadata["count"]
             )
 
