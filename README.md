@@ -28,4 +28,7 @@
 |database.map_size|数据库文件大小|否|5GB|
 |database.name|名称|是|arcticdb|
 |database.timezone|时区|否|Asia/Shanghai|
+|database.name|名称|是|arcticdb|
+|database.password|密码|否||
+|database.database|实例|否||
 
