@@ -7,7 +7,7 @@
 <p align="center">
     <img src ="https://img.shields.io/badge/version-1.0.4-blueviolet.svg"/>
     <img src ="https://img.shields.io/badge/platform-linux|windows|mac-yellow.svg"/>
-    <img src ="https://img.shields.io/badge/python-3.7|3.8-blue.svg" />
+    <img src ="https://img.shields.io/badge/python-3.7|3.11-blue.svg" />
 </p>
 
 ## 说明
@@ -24,4 +24,4 @@
 |database.timezone|时区|是|Asia/Shanghai|
 |database.database|实例|否|默认值为arctic|
 |database.path|数据库文件路径|否|C:\\users\\administrator\\.vntrader\\ 默认值为 .vntrader|
-|database.map_size|数据库文件大小|否|默认值为5GB，Windows下为预分配10GB空间|
+|database.map_size|数据库文件大小|否|默认值为5GB，Windows下会预分配10GB空间|
