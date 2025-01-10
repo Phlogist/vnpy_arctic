@@ -23,24 +23,14 @@ class ArcticDatabase(BaseDatabase):
 
     def __init__(self) -> None:
         """"""
-        self.database_name: str = SETTINGS["database.name"]  # 必须为arctic 供trader.database.get_database()调用
-        self.database_path: str = SETTINGS["database.path"]  # .vntrader 或 D:\SeaTurtle\.vntrader\ 自定义路径
-        self.database_database: str = SETTINGS["database.database"]  # arctic 数据库文件夹名称
-        self.map_size: str = SETTINGS["database.map_size"]  # 5GB
-
-        if not self.database_path:
-            self.database_path = ".vntrader"
-        if not self.database_database:
-            self.database_database = "arctic"
-        if not self.map_size:
-            self.map_size = "5GB"
+        self.database_name: str = SETTINGS["database.name"]  # arcticdb
 
         # 初始化连接
-        self.ac: Arctic = adb.Arctic(f"lmdb://{self.database_path}?map_size={self.map_size}")
+        self.ac: Arctic = adb.Arctic("lmdb://.vntrader")
 
-        # 获取数据库(本地路径为.vntrader/arctic/bar_data/）
-        self.bar_library: Library = self.ac.get_library(f"{self.database_database}.bar_data", create_if_missing=True)
-        self.tick_library: Library = self.ac.get_library(f"{self.database_database}.tick_data", create_if_missing=True)
+        # 获取数据库(本地路径为.vntrader/arcticdb/bar_data/）
+        self.bar_library: Library = self.ac.get_library(f"{self.database_name}.bar_data", create_if_missing=True)
+        self.tick_library: Library = self.ac.get_library(f"{self.database_name}.tick_data", create_if_missing=True)
         
     def save_bar_data(self, bars: List[BarData], stream: bool = True) -> bool:
         """保存K线数据"""
@@ -71,8 +61,8 @@ class ArcticDatabase(BaseDatabase):
 
         # 将数据更新到数据库中
         self.bar_library.update(
-            symbol=table_name,
-            data=df, 
+            table_name,
+            df, 
             upsert=True,
             prune_previous_versions=True
         )
@@ -87,8 +77,8 @@ class ArcticDatabase(BaseDatabase):
                     "symbol": symbol,
                     "exchange": bar.exchange.value,
                     "interval": bar.interval.value,
-                    "start": start,
-                    "end": end,
+                    "start": info.date_range[0],  # 保持为 datetime 类型
+                    "end": info.date_range[1],    # 保持为 datetime 类型
                     "count": count
                 }
 
@@ -100,13 +90,13 @@ class ArcticDatabase(BaseDatabase):
         return True
 
     def save_tick_data(self, ticks: List[TickData], stream: bool = False) -> bool:
-        """保存TICK数据"""
-        # 转换数据为DataFrame
+        """保存Tick数据"""
+        # 转换 TickData 数据为 DataFrame
         data: list = []
 
         for tick in ticks:
             d: dict = {
-                "datetime": convert_tz(tick.datetime),
+                "datetime": convert_tz(tick.datetime),  # 确保时间调整到指定时区
                 "name": tick.name,
                 "volume": tick.volume,
                 "turnover": tick.turnover,
@@ -146,12 +136,12 @@ class ArcticDatabase(BaseDatabase):
         df: DataFrame = DataFrame.from_records(data)
         df = df.set_index('datetime')
 
-        # 生成数据表名
+        # 生成表名
         tick: TickData = ticks[0]
         symbol: str = tick.symbol
         table_name: str = generate_table_name(symbol, tick.exchange)
 
-        # 将数据更新到数据库中
+        # 更新数据到 ArcticDB
         self.tick_library.update(
             table_name, 
             df, 
@@ -159,19 +149,19 @@ class ArcticDatabase(BaseDatabase):
             prune_previous_versions=True
         )
 
-        # 更新Tick线汇总数据
+        # 更新元数据
         info: SymbolDescription = self.tick_library.get_description(table_name)
         count: int = info.row_count
-        start: str = info.date_range[0].strftime('%Y-%m-%d %H:%M:%S ') + tick.datetime.tzinfo.key
-        end: str = info.date_range[1].strftime('%Y-%m-%d %H:%M:%S ') + tick.datetime.tzinfo.key
-        
+        start: datetime = info.date_range[0]  # ArcticDB 中默认支持 datetime 类型
+        end: datetime = info.date_range[1]
+
         metadata = {
-                    "symbol": symbol,
-                    "exchange": tick.exchange.value,
-                    "start": start,
-                    "end": end,
-                    "count": count
-                }
+            "symbol": symbol,
+            "exchange": tick.exchange.value,
+            "start": start,  # 确保存储为 datetime
+            "end": end,      # 确保存储为 datetime
+            "count": count
+        }
 
         self.tick_library.write_metadata(
             symbol=table_name,
@@ -179,6 +169,7 @@ class ArcticDatabase(BaseDatabase):
         )
 
         return True
+
 
     def load_bar_data(
         self,
@@ -332,15 +323,14 @@ class ArcticDatabase(BaseDatabase):
         table_names: list = self.bar_library.list_symbols()
         for table_name in table_names:
             metadata: dict = self.bar_library.read_metadata(table_name).metadata
-            start: datetime = datetime.strptime(metadata["start"].rsplit(' ',1)[0], '%Y-%m-%d %H:%M:%S')
-            end: datetime = datetime.strptime(metadata["end"].rsplit(' ',1)[0], '%Y-%m-%d %H:%M:%S')
 
+            # 确保 start 和 end 是 datetime 类型
             overview: BarOverview = BarOverview(
                 symbol=metadata["symbol"],
                 exchange=Exchange(metadata["exchange"]),
                 interval=Interval(metadata["interval"]),
-                start=start,
-                end=end,
+                start=metadata["start"],  # ArcticDB 默认支持 datetime，无需转换
+                end=metadata["end"],
                 count=metadata["count"]
             )
 
@@ -349,20 +339,18 @@ class ArcticDatabase(BaseDatabase):
         return overviews
 
     def get_tick_overview(self) -> List[TickOverview]:
-        """"查询数据库中的Tick汇总信息"""
+        """查询数据库中的Tick汇总信息"""
         overviews = []
 
         table_names = self.tick_library.list_symbols()
         for table_name in table_names:
             metadata = self.tick_library.read_metadata(table_name).metadata
-            start: datetime = datetime.strptime(metadata["start"].rsplit(' ',1)[0], '%Y-%m-%d %H:%M:%S')
-            end: datetime = datetime.strptime(metadata["end"].rsplit(' ',1)[0], '%Y-%m-%d %H:%M:%S')
 
             overview = TickOverview(
                 symbol=metadata["symbol"],
                 exchange=Exchange(metadata["exchange"]),
-                start=start,
-                end=end,
+                start=metadata["start"],
+                end=metadata["end"],
                 count=metadata["count"]
             )
 
